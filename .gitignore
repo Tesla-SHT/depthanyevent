@@ -1,0 +1,7 @@
+*.pyc
+tmp/
+log/
+weights/
+.vscode/
+samples/
+results/

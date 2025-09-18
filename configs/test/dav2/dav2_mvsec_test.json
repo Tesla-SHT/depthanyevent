@@ -1,0 +1,46 @@
+{
+    "name": "DAv2 Zero-Shot Test",
+    "cuda": true,
+    "gpu": 0,
+    "data_loader": {
+        "dataset": "mvsec",
+        "datapath": "/home/luca/Scrivania/datasets/MVSEC",
+        "split": "test",
+        "concatenate_sequences": false,
+        "slicing": {
+            "slicing_type": "sbt",
+            "time_window_ms": 50
+        },
+        "event_representation": {
+            "representation_type": "tencode",
+            "normalize": true
+        },
+        "preprocessing": [
+            {
+                "preprocessing_type": "Crop",
+                "height": 260,
+                "width": 346
+            }
+        ],
+        "load_images": false,
+        "use_voxels": true,
+        "batch_size": 1,
+        "num_workers": 1,
+        "pin_memory": false,
+        "shuffle": false,
+        "sequence_window": 1,
+        "sequence_step": 1,
+        "all_events": true
+    },
+    "model": {
+        "model_type": "DAv2",
+        "encoder": "vitl",
+        "activation": "softplus",
+        "scale_factor": 1.0,
+        "inv_prediction": false,
+        "input_size_width": 350,
+        "input_size_height": 266,
+        "freeze_encoder": false,
+        "input_channels": 3
+    }
+}
