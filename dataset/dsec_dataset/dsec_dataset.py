@@ -233,17 +233,17 @@ def check_dataset(
         # Create primary dataset (self-supervised or supervised)
         print(f"Creating sequence dataset for: {folder}")
         # Note: Type checker cannot resolve dynamic class parameters
-        datasets[folder] = sequence_class(  # type: ignore[call-arg]
-            sequence_path=os.path.join(dsec_path, "train", folder),
-            event_representation=event_representation,
-            augmentator=augmentator,
-            load_images=images,
-            overfit=overfit,
-            sequence_window=sequence_window,
-            sequence_step=sequence_step,
-            split=data_split,
-            self_supervised=self_supervised,
-            postfix=postfix,
+        datasets[folder] = sequence_class(
+            sequence_path=os.path.join(dsec_path, "train", folder), # type: ignore
+            event_representation=event_representation, # type: ignore
+            augmentator=augmentator, # type: ignore
+            load_images=images, # type: ignore
+            overfit=overfit, # type: ignore
+            sequence_window=sequence_window, # type: ignore
+            sequence_step=sequence_step, # type: ignore
+            split=data_split, # type: ignore
+            self_supervised=self_supervised, # type: ignore
+            postfix=postfix, # type: ignore
             **sequence_parameters,
         )
 
@@ -251,17 +251,17 @@ def check_dataset(
         if hybrid and self_supervised:
             print(f"Creating supervised counterpart for hybrid training: {folder}")
             # Note: Type checker cannot resolve dynamic class parameters
-            supervised_dataset = sequence_class(  # type: ignore[call-arg]
-                sequence_path=os.path.join(dsec_path, "train", folder),
-                event_representation=event_representation,
-                augmentator=augmentator,
-                load_images=images,
-                overfit=overfit,
-                sequence_window=sequence_window,
-                sequence_step=sequence_step,
-                split=data_split,
-                self_supervised=False,  # Force supervised mode for hybrid
-                postfix=postfix,
+            supervised_dataset = sequence_class(
+                sequence_path=os.path.join(dsec_path, "train", folder), # type: ignore
+                event_representation=event_representation, # type: ignore
+                augmentator=augmentator, # type: ignore
+                load_images=images, # type: ignore
+                overfit=overfit, # type: ignore
+                sequence_window=sequence_window, # type: ignore
+                sequence_step=sequence_step, # type: ignore
+                split=data_split, # type: ignore
+                self_supervised=self_supervised, # type: ignore
+                postfix=postfix, # type: ignore
                 **sequence_parameters,
             )
 
@@ -297,7 +297,7 @@ def split_path(path: str) -> List[str]:
     
     while True:
         path, folder = os.path.split(path)
-        if folder:
+        if folder != "":
             components.append(folder)
         elif path:
             # Handle absolute paths (root component)

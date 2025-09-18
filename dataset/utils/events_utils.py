@@ -39,7 +39,7 @@ class RepresentationsLoader:
                                 f" 'representation_type' key.")
             if representation["representation_type"] not in KNOWN_REPRESENTATIONS.keys():
                 raise Exception(f"Error in {representations_file_path}.\n"
-                                f"\"{representation["representation_type"]}\" of \"{representation_name}\" "
+                                f"\"{representation['representation_type']}\" of \"{representation_name}\" "
                                 f"does not match any known representation.\n"
                                 f"Known Representation: {list(KNOWN_REPRESENTATIONS.keys())}")
         return representations

@@ -3,7 +3,7 @@ import os
 import json
 from typing import Tuple, Dict, Any
 
-def get_dsec_dev_full_path()-> str:
+def get_dsec_dev_full_path()-> pathlib.Path:
     this_file_absolute_path = pathlib.Path(__file__).parent.resolve()
     elements = str(this_file_absolute_path).split("/")
     assert "nut_events" in elements

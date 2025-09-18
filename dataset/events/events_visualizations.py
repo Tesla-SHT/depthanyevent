@@ -24,7 +24,7 @@ def voxel_grid_mono_to_rgb(left: torch.Tensor):
     # Now for sure a_voxel_grid have shape [W, H]
 
     # 2) Go to Numpy
-    left = left.numpy()
+    left = left.numpy() # type: ignore
     rgb_left = np.ones((left.shape[0], left.shape[1], 3)) * [255, 255, 255]
     rgb_left[left > 0.1] = [0, 0, 255]
     rgb_left[left < - 0.1] = [255, 0, 0]

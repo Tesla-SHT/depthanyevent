@@ -223,9 +223,9 @@ class RandomRotationFlip(Augmentator):
 
     def __init__(self, degrees, p_hflip=0.5, p_vflip=0.5):
         if isinstance(degrees, numbers.Number):
-            if degrees < 0:
+            if degrees < 0: # type: ignore
                 raise ValueError("If degrees is a single number, it must be positive.")
-            self.degrees = (-degrees, degrees)
+            self.degrees = (-degrees, degrees) # type: ignore
         else:
             if len(degrees) != 2:
                 raise ValueError("If degrees is a sequence, it must be of len 2.")
@@ -361,7 +361,7 @@ class RandomScale(Augmentator):
         return transformed.squeeze(dim=0)
 
     def __repr__(self):
-        format_string = self.__class__.__name__ + '(scale_factor={0}'.format(self.scale_factor)
+        format_string = self.__class__.__name__ + '(scale_factors={0}'.format(self.scale_factors)
         format_string += ')'
         return format_string
 
