@@ -5,3 +5,5 @@ weights/
 .vscode/
 samples/
 results/
+MVSEC/
+.cursor/

@@ -18,11 +18,11 @@
 #   - This script assumes that the conda environment and project directory already exist.
 # -----------------------------------------------------------------------------
 
-MINICONDA_PROFILE_PATH="/home/luca/miniconda3/etc/profile.d/conda.sh"
-CONDA_ENV_NAME="depthanyevent"
-CODEBASE_PATH="/home/luca/Scrivania/projects/depthanyevent/"
+ANACONDA_PROFILE_PATH="/home/haotian/anaconda3/etc/profile.d/conda.sh"
+CONDA_ENV_NAME="dust3r"
+CODEBASE_PATH="/home/haotian/Project/depthanyevent/"
 
-source "$MINICONDA_PROFILE_PATH"
+source "$ANACONDA_PROFILE_PATH"
 conda activate "$CONDA_ENV_NAME"
 cd "$CODEBASE_PATH"
 

@@ -24,6 +24,13 @@ from losses import normalized_depth_scale_and_shift
 from dataset import fetch_dataloader
 from models import fetch_model
 from evaluation import add_to_metrics, prepare_prediction_data, prepare_target_data, prepare_target_data_torch
+import sys
+import os
+# Add depth directory to path for importing tools
+depth_dir = os.path.join(os.path.dirname(__file__), 'depth')
+if depth_dir not in sys.path:
+    sys.path.insert(0, depth_dir)
+from depth.tools import depth_evaluation
 
 # Constants for normalization (ImageNet standard values)
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -184,19 +191,89 @@ def run(data, model, global_context):
     # Create depth mask (currently allows all pixels)
     depth_mask = (np.ones_like(target_depth) > 0)
 
-    # Calculate overall metrics
-    metrics = add_to_metrics(-1, metrics, target_depth, pred_numpy, depth_mask, prefix="_") 
+    # Use depth_evaluation from depth/tools.py for evaluation
+    # Convert numpy arrays to torch tensors if needed (depth_evaluation handles both)
+    eval_results, _, refined_pred, _ = depth_evaluation(
+        predicted_depth_original=pred_numpy,
+        ground_truth_depth_original=target_depth,
+        custom_mask=depth_mask.astype(np.float32) if depth_mask.dtype != np.float32 else depth_mask,
+        max_depth=args.clip_distance,
+        align_with_lad=True,  # Use LAD alignment like in depth_eval.py
+        lr=0.5,
+        max_iters=20000,
+        use_gpu=args.cuda
+    )
 
+    # Convert depth_evaluation results to metrics format compatible with existing code
+    metrics = {}
+    metrics["_abs_rel_diff"] = eval_results["Abs Rel"]
+    metrics["_squ_rel_diff"] = eval_results["Sq Rel"]
+    metrics["_RMS_linear"] = eval_results["RMSE"]
+    metrics["_RMS_log"] = eval_results["Log RMSE"]
+    metrics["_threshold_delta_1.25"] = eval_results["δ < 1.25"]
+    metrics["_threshold_delta_1.25^2"] = eval_results["δ < 1.25^2"]
+    metrics["_threshold_delta_1.25^3"] = eval_results["δ < 1.25^3"]
+    
+    # Calculate additional statistics from refined prediction
+    refined_pred_np = refined_pred.cpu().numpy() if isinstance(refined_pred, torch.Tensor) else refined_pred
+    valid_pixels = (target_depth > 0) & (target_depth < args.clip_distance) & (refined_pred_np > 0)
+    if np.sum(valid_pixels) > 0:
+        metrics["_mean_target_depth"] = np.mean(target_depth[valid_pixels])
+        metrics["_median_target_depth"] = np.median(target_depth[valid_pixels])
+        metrics["_mean_prediction_depth"] = np.mean(refined_pred_np[valid_pixels])
+        metrics["_median_prediction_depth"] = np.median(refined_pred_np[valid_pixels])
+        metrics["_mean_depth_error"] = np.mean(np.abs(target_depth[valid_pixels] - refined_pred_np[valid_pixels]))
+        metrics["_median_diff"] = np.abs(np.median(target_depth[valid_pixels]) - np.median(refined_pred_np[valid_pixels]))
+        
+        # Calculate SILog
+        log_diff = np.log(target_depth[valid_pixels] + 1e-5) - np.log(refined_pred_np[valid_pixels] + 1e-5)
+        metrics["_SILog"] = np.mean(log_diff**2) - (np.mean(log_diff))**2
+    else:
+        metrics["_mean_target_depth"] = 0.0
+        metrics["_median_target_depth"] = 0.0
+        metrics["_mean_prediction_depth"] = 0.0
+        metrics["_median_prediction_depth"] = 0.0
+        metrics["_mean_depth_error"] = 0.0
+        metrics["_median_diff"] = 0.0
+        metrics["_SILog"] = 0.0
+    
     # Calculate metrics for different depth thresholds
     for depth_threshold in [10, 20, 30]:
         threshold_mask = (np.nan_to_num(target_depth) < depth_threshold)
-        metrics = add_to_metrics(
-            -1, metrics, target_depth, pred_numpy, 
-            depth_mask & threshold_mask, prefix=f"_{depth_threshold}_"
-        )
+        combined_mask = depth_mask & threshold_mask
+        
+        if np.sum(combined_mask) > 0:
+            threshold_results, _, _, _ = depth_evaluation(
+                predicted_depth_original=pred_numpy,
+                ground_truth_depth_original=target_depth,
+                custom_mask=combined_mask.astype(np.float32) if combined_mask.dtype != np.float32 else combined_mask,
+                max_depth=depth_threshold,
+                align_with_lad=True,
+                lr=0.5,
+                max_iters=20000,
+                use_gpu=args.cuda
+            )
+            
+            metrics[f"_{depth_threshold}_abs_rel_diff"] = threshold_results["Abs Rel"]
+            metrics[f"_{depth_threshold}_squ_rel_diff"] = threshold_results["Sq Rel"]
+            metrics[f"_{depth_threshold}_RMS_linear"] = threshold_results["RMSE"]
+            metrics[f"_{depth_threshold}_RMS_log"] = threshold_results["Log RMSE"]
+            metrics[f"_{depth_threshold}_threshold_delta_1.25"] = threshold_results["δ < 1.25"]
+            metrics[f"_{depth_threshold}_threshold_delta_1.25^2"] = threshold_results["δ < 1.25^2"]
+            metrics[f"_{depth_threshold}_threshold_delta_1.25^3"] = threshold_results["δ < 1.25^3"]
+        else:
+            # If no valid pixels, set metrics to 0
+            metrics[f"_{depth_threshold}_abs_rel_diff"] = 0.0
+            metrics[f"_{depth_threshold}_squ_rel_diff"] = 0.0
+            metrics[f"_{depth_threshold}_RMS_linear"] = 0.0
+            metrics[f"_{depth_threshold}_RMS_log"] = 0.0
+            metrics[f"_{depth_threshold}_threshold_delta_1.25"] = 0.0
+            metrics[f"_{depth_threshold}_threshold_delta_1.25^2"] = 0.0
+            metrics[f"_{depth_threshold}_threshold_delta_1.25^3"] = 0.0
     
-    # Calculate mean absolute error map
-    error_map = np.abs(target_depth - pred_numpy)
+    # Calculate mean absolute error map using refined prediction
+    refined_pred_np = refined_pred.cpu().numpy() if isinstance(refined_pred, torch.Tensor) else refined_pred
+    error_map = np.abs(target_depth - refined_pred_np)
    
     return metrics, prediction, error_map
 
@@ -277,6 +354,7 @@ def print_and_save(args, config, metrics, seq="MEAN"):
         if os.path.exists(args.csv_path):
             csv_file = open(args.csv_path, "a")
         else:
+            os.makedirs(os.path.dirname(args.csv_path), exist_ok=True)
             csv_file = open(args.csv_path, "w")
             write_csv_header(csv_file, metrics)
         
